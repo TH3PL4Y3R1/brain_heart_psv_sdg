@@ -1,24 +1,47 @@
 # SDG Brain–Heart Coupling: Code Usage
 
-This folder contains the MATLAB implementation to compute time‑varying brain–heart coupling using a Sympathovagal Dynamics (SDG) model based on Poincaré‑derived HRV indices and band‑limited EEG power.
+This folder contains implementations to compute time‑varying brain–heart coupling using a Sympathovagal Dynamics (SDG) model based on Poincaré‑derived HRV indices and band‑limited EEG power.
 
-The code is derived from the article located in the repository’s main folder. Please refer to that article for the physiological rationale, definitions of CSI/CVI, and interpretation guidance.
+Subfolders:
 
-## Files
+- `matlab/` — MATLAB implementation
+  - Core model files that work on plain MATLAB arrays (no FieldTrip required):
+    - `model_psv_sdg.m`, `compute_CSI_CVI.m`
+  - Optional FieldTrip‑based convenience pipeline:
+    - `compute_psv_sdg.m` (uses FieldTrip to compute EEG power, then runs the model)
+- `python/` — documentation and interface stubs for a future Python port (no algorithmic code yet)
 
-- `compute_CSI_CVI.m` — Builds time‑varying CSI and CVI from non‑interpolated inter‑beat intervals (IBI) using sliding Poincaré descriptors (SD1, SD2) and returns uniformly sampled series.
-- `compute_psv_sdg.m` — End‑to‑end pipeline: constructs IBI from detected heartbeats, computes CSI/CVI, extracts band‑limited EEG power via FieldTrip, and runs the SDG coupling model per band.
-- `model_psv_sdg.m` — Core model that estimates directional couplings between EEG band power and CSI/CVI in both directions (heart→brain and brain→heart) using ARX modeling and normalized indices.
+The code is derived from the article in the repository’s main folder. Please refer to that article for the physiological rationale, definitions of CSI/CVI, and interpretation guidance.
+
+## Files (MATLAB)
+
+- `matlab/compute_CSI_CVI.m` — Builds time‑varying CSI and CVI from non‑interpolated inter‑beat intervals (IBI) using sliding Poincaré descriptors (SD1, SD2) and returns uniformly sampled series.
+- `matlab/compute_psv_sdg.m` — End‑to‑end pipeline: constructs IBI from detected heartbeats, computes CSI/CVI, extracts band‑limited EEG power via FieldTrip, and runs the SDG coupling model per band. Requires FieldTrip.
+- `matlab/model_psv_sdg.m` — Core model that estimates directional couplings between EEG band power and CSI/CVI in both directions (heart→brain and brain→heart) using ARX modeling and normalized indices. No FieldTrip required.
 
 ## Requirements
 
 - MATLAB (R2019b or later recommended)
-- System Identification Toolbox (for `iddata`, `arx`)
-- FieldTrip toolbox (for `ft_freqanalysis`, `ft_selectdata`)
-- Parallel Computing Toolbox (optional; accelerates channel‑wise loops via `parfor`)
-- A helper function `clean_artif` (optional). If you don’t have it, either provide your own artifact‑cleaning routine or comment out the corresponding line in `model_psv_sdg.m`.
+- System Identification Toolbox (for `iddata`, `arx`) — required by the core model
+- Parallel Computing Toolbox — optional; accelerates channel‑wise loops via `parfor`
+- FieldTrip toolbox — optional; only required if you use `matlab/compute_psv_sdg.m` to compute EEG power inside MATLAB
+- A helper function `clean_artif` (optional). If you don’t have it, either provide your own artifact‑cleaning routine or comment out the corresponding line in `matlab/model_psv_sdg.m`.
 
 ## Inputs and data format
+
+Two ways to use the code:
+
+Core model (no FieldTrip):
+
+- EEG_comp — matrix (channels × time) of band‑limited EEG power you computed elsewhere
+- IBI — vector of non‑interpolated inter‑beat intervals (seconds)
+- t_IBI — timestamps for IBI (seconds)
+- CSI, CVI — time‑aligned HRV indices (scaled)
+- Fs — sampling rate of EEG_comp/time (Hz)
+- time — time vector for EEG_comp (seconds)
+- wind — window length in seconds (e.g., 15)
+
+Convenience pipeline (with FieldTrip):
 
 - EEG data: a FieldTrip raw data structure, minimally containing
   - `data_eeg.trial{1}` — matrix (channels × time)
@@ -46,13 +69,18 @@ The code is derived from the article located in the repository’s main folder. 
 ## How to run (minimal example)
 
 ```matlab
-% Add FieldTrip and this code folder to your MATLAB path
+% Option A: Core model without FieldTrip (you computed band power elsewhere)
+addpath('/absolute/path/to/repo/code/matlab');
+
+% Provide your arrays: EEG_comp, IBI, t_IBI, CSI, CVI, Fs, time, wind
+[CSI2B, CVI2B, B2CSI, B2CVI, tH2B, tB2H] = model_psv_sdg(EEG_comp, IBI, t_IBI, CSI, CVI, Fs, time, wind);
+
+% Option B: FieldTrip‑based pipeline
 addpath('/path/to/fieldtrip'); ft_defaults;
-addpath('/home/martin/RESEARCH/thesis/brain_heart_psv_sdg/code');
+addpath('/absolute/path/to/repo/code/matlab');
 
 % data_eeg: FieldTrip raw structure with .trial{1} and .time{1}
-% pks_indx: indices into data_eeg.time{1} for detected heartbeats (e.g., R‑peaks)
-
+% pks_indx: indices into data_eeg.time{1}
 struct_sdg = compute_psv_sdg(data_eeg, pks_indx);
 
 % Example: inspect delta‑band couplings (first channel)
@@ -63,15 +91,34 @@ legend('CSI→delta','CVI→delta'); xlabel('Time (s)'); ylabel('Coupling');
 ```
 
 Notes:
+
 - If you see “Undefined function or variable 'clean_artif'”, comment out the corresponding line in `model_psv_sdg.m` or supply your own artifact cleaning.
-- If you see “Undefined function 'ft_freqanalysis'”, make sure FieldTrip is installed and `ft_defaults` has been run.
+- If you see “Undefined function 'ft_freqanalysis'”, you’re using the convenience pipeline — make sure FieldTrip is installed and `ft_defaults` has been run.
 - If you lack Parallel Computing Toolbox, replace `parfor` with `for` in `model_psv_sdg.m`.
 
 ## Key parameters
 
 - Window for CSI/CVI: `wind = 15` seconds (in `compute_psv_sdg.m` → `compute_CSI_CVI`)
 - Time‑frequency analysis: 2‑s windows, 50% overlap, 0–45 Hz, 0.5‑Hz steps
-- SDG model time base: `Fs = 1` Hz resampling for alignment
+- SDG model time base: typically `Fs = 4` Hz for the model grid in `sample.m`; the FieldTrip pipeline may align as needed.
+
+## Sample runner (no FieldTrip, BIDS + EEGLAB)
+
+`sample.m` demonstrates a minimal end‑to‑end run using an EEGLAB `.set` exported from BIDS:
+
+- Auto‑discovers `.set` files under `data/` or uses the `BRAIN_HEART_DATA_DIR` environment variable as a BIDS root.
+- Derives the matching `channels.tsv` to locate the ECG channel; falls back to common labels (ECG/EKG/...).
+- Computes IBI → CSI/CVI → band‑power (alpha) → runs `model_psv_sdg` and plots heart→brain coupling for channel 1.
+
+Run from the repo root in MATLAB:
+
+```matlab
+addpath(fullfile(pwd,'code','matlab'));
+% Optional: add EEGLAB to path if not already
+% addpath('/path/to/eeglab'); eeglab('nogui');
+
+sample
+```
 
 ## Outputs (selected fields of `struct_sdg`)
 
