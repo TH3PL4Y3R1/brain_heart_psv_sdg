@@ -2,6 +2,28 @@
 
 All notable changes to this repository in this session.
 
+## 2025-11-09
+
+- Notebooks & Analysis
+  - Added `code/python/brain_heart_coupling_study.ipynb` providing an end‑to‑end, commented exploratory pipeline (synthetic data → sliding Poincaré → directional coupling plots).
+  - Fixed sliding‑window CSI/CVI implementation (previous draft could stall); now uses a clear 1 s stride loop with correct SD1/SD2 formulas.
+  - Corrected time‑base alignment and interpolation for coupling model to eliminate length mismatch errors.
+  - Added plots for Heart→Brain ARX coefficients (CSI/CVI) and Brain→Heart normalized Cs/Cp indices.
+- MATLAB Enhancements
+  - Added `code/matlab/synthetic_test_brain_heart.m` to generate synthetic RR intervals, compute CSI/CVI, synthesize EEG band power, and invoke `model_psv_sdg.m` for quick verification.
+- Coupling Model Adjustments (Python translation)
+  - Implemented ARX b‑coefficient least‑squares estimator (`arx_b_coefficient`) inside the study notebook.
+  - Added `compute_csi_cvi` corrected function for robust sliding‑window HRV index generation.
+- Environment & Compatibility
+  - Documented minimal dependency approach (preferring custom HRV computations over heavy external libraries).
+  - Added Python compatibility shim (sitecustomize pattern) guidance for legacy `collections` ABC imports under Python 3.12.
+- Documentation
+  - Expanded inline comments across new notebook cells for mathematical rationale and processing steps.
+  - Listed next steps (surrogate significance testing, real data integration, packaging) inside the study notebook.
+- Quality & Stability
+  - Resolved interpolation length mismatch that previously raised a ValueError in coupling pipeline.
+  - Ensured no extrapolation beyond overlapping time ranges when resampling CSI/CVI and Cs/Cp series.
+
 ## 2025-11-02
 
 - Docs
