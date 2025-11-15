@@ -1,0 +1,4 @@
+# Ignore local data directory with raw/large or sensitive recordings
+data/
+
+# You can override by removing this entry locally if you intentionally version small test fixtures under data/

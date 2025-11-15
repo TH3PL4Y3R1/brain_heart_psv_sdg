@@ -18,6 +18,8 @@ Primary reference (included in this repo):
   - Upstream author’s original MATLAB functions and their `readme.md` (license and citation notes). These original functions operate on plain MATLAB arrays and do not depend on FieldTrip.
 - `candia-rivera(2023).pdf`
   - The MethodsX article that describes the model and its rationale.
+- (Optional) `data/`
+  - Place large raw EEG/ECG datasets here locally. This folder is intentionally **not tracked**; add `data/` to `.gitignore` to avoid committing sensitive or heavy files. See "Data folder & ignoring" section below.
 
 ## What the code does (high level)
 
@@ -66,6 +68,22 @@ addpath(fullfile(pwd,'code','matlab'));
 
 sample  % runs end-to-end and plots heart→brain couplings for ch1
 ```
+
+## Data folder & ignoring
+
+Create a local `data/` directory for raw or intermediate files (BIDS datasets, exported band power, large MAT files). To keep the repository lightweight and prevent accidental commits of sensitive data, ensure `data/` is ignored by Git. If a `.gitignore` does not yet exist, create one at the repo root containing:
+
+```gitignore
+data/
+```
+
+Rationale:
+
+- Avoid pushing large binaries that bloat history.
+- Protect potentially identifiable physiological recordings.
+- Keep version control focused on source code and lightweight metadata.
+
+You can set `BRAIN_HEART_DATA_DIR` to point elsewhere if you prefer not to use `data/`.
 
 ## Notes on CSI/CVI
 
