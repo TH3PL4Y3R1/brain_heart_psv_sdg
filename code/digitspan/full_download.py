@@ -1,4 +1,6 @@
 import datalad.api as dl
+import subprocess
+import os
 
 def get_complete_subjects():
     # 1. Define the full range of subjects found in the repo (13 to 98)
@@ -27,13 +29,53 @@ def main():
     subjects_to_download = get_complete_subjects()
     
     print(f"Found {len(subjects_to_download)} complete subjects.")
-    print(f"Downloading: {subjects_to_download}")
+    print(f"Starting from {subjects_to_download[0]} to {subjects_to_download[-1]}")
+    print("=" * 70)
+    print()
     
-    # 5. Execute DataLad Get
-    # dataset='.' assumes you run this script from inside the dataset folder
-    dl.get(path=subjects_to_download, dataset='.', recursive=True)
+    successful = 0
+    failed = 0
     
-    print("Download complete.")
+    # Loop through each complete subject one at a time
+    for idx, subject in enumerate(subjects_to_download, 1):
+        print(f"[{idx}/{len(subjects_to_download)}] {subject}: Finding rest files...")
+        
+        try:
+            # Find all task-rest files for this subject
+            find_cmd = f"find {subject} -name '*task-rest*' 2>/dev/null"
+            result = subprocess.run(find_cmd, shell=True, capture_output=True, text=True)
+            
+            files = [f.strip() for f in result.stdout.split('\n') if f.strip()]
+            
+            if not files:
+                print(f"     ⏭️  No rest files found, skipping\n")
+                continue
+            
+            print(f"     📁 Found {len(files)} rest files")
+            print(f"     ⬇️  Downloading...")
+            
+            # Download all rest files for this subject
+            for file in files:
+                try:
+                    dl.get(path=file, dataset='.', result_renderer='disabled')
+                except Exception as e:
+                    # Ignore errors for individual files (might be symlinks, etc.)
+                    pass
+            
+            print(f"     ✅ Complete!\n")
+            successful += 1
+                
+        except Exception as e:
+            print(f"     ❌ Error: {e}\n")
+            failed += 1
+            continue
+    
+    # Summary
+    print("=" * 70)
+    print(f"🎯 Download Complete!")
+    print(f"   ✅ Successful: {successful}/{len(subjects_to_download)}")
+    print(f"   ❌ Failed:     {failed}/{len(subjects_to_download)}")
+    print("=" * 70)
 
 if __name__ == "__main__":
     main()
