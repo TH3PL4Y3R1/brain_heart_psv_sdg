@@ -1,4 +1,5 @@
 # Ignore local data directory with raw/large or sensitive recordings
 data/
-
+code/digitspan/rest_data_v2
+code/digitspan/task_data
 # You can override by removing this entry locally if you intentionally version small test fixtures under data/
